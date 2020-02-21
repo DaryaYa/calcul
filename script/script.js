@@ -54,18 +54,18 @@ const DATA = {
 const showElement = element => element.style.display = 'block';
 const hideElement = element => element.style.display = 'none';
 
-const dopOptionsString = () => {
-    
+const dopOptionsString = (yandex, google, order) => {   
     //Подключим Яндекс Метрику, Гугл Аналитику и отправку заявок на почту.
     let arr = [];
     let str = '';
 
-    if (metrikaYandex.checked || analyticsGoogle.checked || sendOrder.checked) {
+    if (yandex || google || order) {
         str += 'Подключим';
     }
-    metrikaYandex.checked ? arr.push(' Яндекс Метрику') : '';
-    analyticsGoogle.checked ? arr.push(' Гугл Аналитику') : '';
-    sendOrder.checked ? arr.push(' отправку заявок на почту.') : '';
+    
+    yandex ? arr.push(' Яндекс Метрику') : '';
+    google ? arr.push(' Гугл Аналитику') : '';
+    order ? arr.push(' отправку заявок на почту.') : '';
     str += arr.join(',');
 
     return str;
@@ -86,7 +86,7 @@ const renderTextContent = (total, site, maxDay, minDay) => {
 
     calcDescription.textContent = `
     Сделаем ${site}${adapt.checked ? ', адаптированный под мобильные устройства и планшеты' : ''}. 
-    ${editable.checked ? 'Установим панель админстратора, чтобы вы могли самостоятельно менять содержание на сайте без разработчика.' : ''}  ${dopOptionsString()}
+    ${editable.checked ? 'Установим панель админстратора, чтобы вы могли самостоятельно менять содержание на сайте без разработчика.' : ''}  ${dopOptionsString(metrikaYandex.checked, analyticsGoogle.checked, sendOrder.checked)}
     `;
 };
 
@@ -181,6 +181,30 @@ const moveTotal = () => {
     }
 };
 
+const renderResponse = response => {
+    // if (response.ok) {
+        hideElement(totalElement);
+        cardHead.style.color ="green";
+        cardHead.textContent = 'Спасибо за заявку, мы скоро с вами свяжемся!';
+        
+    // }
+}
+
+const formSubmit = event => {
+    event.preventDefault();
+
+    const formData = new FormData(event.target)
+
+    fetch('server.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        },
+        body: formData,
+    }).then(renderResponse).catch(err=>console.error(err));
+    
+}
+
 startButton.addEventListener('click', () => {
     hideElement(firstScreen);
     showElement(mainForm);
@@ -201,4 +225,7 @@ endButton.addEventListener('click', () => {
 });
 
 formCalculate.addEventListener('click', handlerCallbackForm);
+
+formCalculate.addEventListener('submit', formSubmit);
+
 priceCalculation();
