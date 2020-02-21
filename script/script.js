@@ -1,13 +1,38 @@
+'use strict';
 const startButton = document.querySelector('.start-button');
 const firstScreen = document.querySelector('.first-screen');
+const firstFieldset = document.querySelector('.first-fieldset');
 const mainForm = document.querySelector('.main-form');
 const formCalculate = document.querySelector('.form-calculate');
 const totalElement = document.querySelector('.total');
 const endButton = document.querySelector('.end-button');
 const fastRange = document.querySelector('.fast-range');
 const totalPriceSum = document.querySelector('.total_price__sum');
+const adapt = document.getElementById('adapt');
 const mobileTemplate = document.getElementById('mobileTemplates');
+const desktopTemplate = document.getElementById('desktopTemplates');
+const editable = document.getElementById('editable');
+const adaptValue = document.querySelector('.adapt_value');
+const mobileTemplateValue = document.querySelector('.mobileTemplates_value');
+const desktopTemplateValue = document.querySelector('.desktopTemplates_value');
+const editableValue = document.querySelector('.editable_value');
+const typeSite = document.querySelector('.type-site');
+const maxDeadline = document.querySelector('.max-deadline');
+const rangeDeadline = document.querySelector('.range-deadline');
+const deadlineValue = document.querySelector('.deadline-value');
+const calcDescription = document.querySelector('.calc-description');
+const metrikaYandex = document.getElementById('metrikaYandex');
+const analyticsGoogle = document.getElementById('analyticsGoogle');
+const sendOrder = document.getElementById('sendOrder');
+const cardHead = document.querySelector('.card-head');
+const totalPrice = document.querySelector('.total_price');
 
+const declOfNum = (n, titles) => {
+    return n + ' ' + titles[n % 10 === 1 && n % 100 !== 11 ?
+        0 : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? 1 : 2];
+};
+
+const DAY_STRING = ["день", "дня", "дней"];
 const DATA = {
     whichSite: ['landing', 'multiPage', 'onlineStore'],
     price: [4000, 8000, 26000],
@@ -26,19 +51,54 @@ const DATA = {
     deadlinePercent: [20, 17, 15]
 };
 
-function showElement(element) {
-    element.style.display = 'block';
-}
+const showElement = element => element.style.display = 'block';
+const hideElement = element => element.style.display = 'none';
 
-function hideElement(element) {
-    element.style.display = 'none';
-}
+const dopOptionsString = () => {
+    
+    //Подключим Яндекс Метрику, Гугл Аналитику и отправку заявок на почту.
+    let arr = [];
+    let str = '';
 
-function priceCalculation(elem) {
+    if (metrikaYandex.checked || analyticsGoogle.checked || sendOrder.checked) {
+        str += 'Подключим';
+    }
+    metrikaYandex.checked ? arr.push(' Яндекс Метрику') : '';
+    analyticsGoogle.checked ? arr.push(' Гугл Аналитику') : '';
+    sendOrder.checked ? arr.push(' отправку заявок на почту.') : '';
+    str += arr.join(',');
+
+    return str;
+};
+
+const renderTextContent = (total, site, maxDay, minDay) => {
+    totalPriceSum.textContent = total;
+    typeSite.textContent = site;
+    maxDeadline.textContent = declOfNum(maxDay, DAY_STRING);
+    rangeDeadline.min = minDay;
+    rangeDeadline.max = maxDay;
+    deadlineValue.textContent = declOfNum(rangeDeadline.value, DAY_STRING);
+
+    adaptValue.textContent = adapt.checked ? 'Да' : 'Нет';
+    mobileTemplateValue.textContent = mobileTemplate.checked ? 'Да' : 'Нет';
+    desktopTemplateValue.textContent = desktopTemplate.checked ? 'Да' : 'Нет';
+    editableValue.textContent = editable.checked ? 'Да' : 'Нет';
+
+    calcDescription.textContent = `
+    Сделаем ${site}${adapt.checked ? ', адаптированный под мобильные устройства и планшеты' : ''}. 
+    ${editable.checked ? 'Установим панель админстратора, чтобы вы могли самостоятельно менять содержание на сайте без разработчика.' : ''}  ${dopOptionsString()}
+    `;
+};
+
+const priceCalculation = (elem = {}) => {
 
     let result = 0;
     let index = 0;
     let options = [];
+    let site = '';
+    let maxDeadlineDay = DATA.deadlineDay[index][1];
+    let minDeadlineDay = DATA.deadlineDay[index][0];
+    let overPercent = 0;
 
     if (elem.name === 'whichSite') {
         for (const item of formCalculate.elements) {
@@ -49,22 +109,20 @@ function priceCalculation(elem) {
         hideElement(fastRange);
     }
 
-    if (elem.id === 'adapt' && elem.checked) {
-        console.dir(mobileTemplate)
-        mobileTemplate.disabled = false;
-        DATA['mobileTemplates'] = 15;
-    } else if (elem.id === 'adapt' && !elem.checked) {
-        mobileTemplate.disabled = true;
-        DATA['mobileTemplates'] = 0;
-    }
-
     for (const item of formCalculate.elements) {
         if (item.name === 'whichSite' && item.checked) {
             index = DATA.whichSite.indexOf(item.value);
+            site = item.dataset.site;
+            maxDeadlineDay = DATA.deadlineDay[index][1];
+            minDeadlineDay = DATA.deadlineDay[index][0];
         } else if (item.classList.contains('calc-handler') && item.checked) {
             options.push(item.value)
+        } else if (item.classList.contains('want-faster') && item.checked) {
+            const overDay = maxDeadlineDay - rangeDeadline.value;
+            overPercent = (DATA.deadlinePercent[index] / 100) * overDay;
         }
     }
+    result += DATA.price[index];
 
     options.forEach(function(key) {
         if (typeof(DATA[key]) === 'number') {
@@ -79,15 +137,24 @@ function priceCalculation(elem) {
             }
         }
     })
-    result += DATA.price[index];
-    totalPriceSum.textContent = result;
-}
 
-function handlerCallbackForm(event) {
+    result += result * overPercent;
+    renderTextContent(result, site, maxDeadlineDay, minDeadlineDay);
+};
+
+const handlerCallbackForm = event => {
     const target = event.target;
+
+    if (adapt.checked) {
+        mobileTemplate.disabled = false;
+    } else {
+        mobileTemplate.disabled = true;
+        mobileTemplate.checked = false;
+    }
 
     if (target.classList.contains('want-faster')) {
         target.checked ? showElement(fastRange) : hideElement(fastRange);
+        priceCalculation(target);
     }
 
     if (target.classList.contains('calc-handler')) {
@@ -95,12 +162,32 @@ function handlerCallbackForm(event) {
     }
 };
 
-startButton.addEventListener('click', function() {
+const moveBackTotal = () => {
+     if (document.documentElement.getBoundingClientRect().bottom > document.documentElement.clientHeight + 200) {
+        totalPrice.classList.remove('totalPriceBottom');
+        firstFieldset.after(totalPrice);
+        window.removeEventListener('scroll', moveBackTotal);
+        window.addEventListener('scroll', moveTotal);
+     }
+
+};
+
+const moveTotal = () => {
+    if (document.documentElement.getBoundingClientRect().bottom < document.documentElement.clientHeight + 200) {
+        totalPrice.classList.add('totalPriceBottom');
+        endButton.before(totalPrice);
+        window.removeEventListener('scroll', moveTotal);
+        window.addEventListener('scroll', moveBackTotal);
+    }
+};
+
+startButton.addEventListener('click', () => {
     hideElement(firstScreen);
     showElement(mainForm);
+    window.addEventListener('scroll', moveTotal);
 });
 
-endButton.addEventListener('click', function() {
+endButton.addEventListener('click', () => {
 
     for (const elem of formCalculate.elements) {
         if (elem.tagName === 'FIELDSET') {
@@ -108,7 +195,10 @@ endButton.addEventListener('click', function() {
         }
     };
 
+    cardHead.textContent = 'Заявка на разработку сайта';
+    // hideElement(totalPrice);
     showElement(totalElement);
 });
 
 formCalculate.addEventListener('click', handlerCallbackForm);
+priceCalculation();
